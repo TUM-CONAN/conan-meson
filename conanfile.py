@@ -10,6 +10,9 @@ required_conan_version = ">=1.52.0"
 
 
 class MesonConan(ConanFile):
+    python_requires = "camp_common/[>=0.1]@camposs/stable"
+    python_requires_extend = "camp_common.CampPythonBase"
+
     name = "meson"
     version = "1.6.0"
     description = "a project to create the best possible next-generation build system"
@@ -20,22 +23,12 @@ class MesonConan(ConanFile):
     package_type = "application"
     no_copy_source = True
 
-    options = { 
-        "python_version": ["ANY"],
-        "with_system_python": [True, False],
-    }
-
-    default_options = {
-        "python_version": "3.12",
-        "with_system_python": False,
-    }
-
     def layout(self):
         basic_layout(self, src_folder="src")
 
     def requirements(self):
-        if not self.options.with_system_python:
-            self.tool_requires("cpython/[~{}]".format(self.options.python_version))
+        if self._use_custom_python:
+            self.requires("cpython/[~{}]@camposs/stable".format(self._python_version))
         if self.conf.get("tools.meson.mesontoolchain:backend", default="ninja", check_type=str) == "ninja":
             # Meson requires >=1.8.2 as of 1.5
             # https://github.com/mesonbuild/meson/blob/b6b634ad33e5ca9ad4a9d6139dba4244847cc0e8/mesonbuild/backend/ninjabackend.py#L625
