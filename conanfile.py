@@ -35,9 +35,7 @@ class MesonConan(ConanFile):
 
     def requirements(self):
         if not self.options.with_system_python:
-            self.requires("cpython/[~{}]".format(self.options.python_version), run=True)
-            self.requires("python-pip/24.3.1@camposs/stable", run=True)
-            self.requires("python-setuptools/75.6.0@camposs/stable", run=True)
+            self.tool_requires("cpython/[~{}]".format(self.options.python_version))
         if self.conf.get("tools.meson.mesontoolchain:backend", default="ninja", check_type=str) == "ninja":
             # Meson requires >=1.8.2 as of 1.5
             # https://github.com/mesonbuild/meson/blob/b6b634ad33e5ca9ad4a9d6139dba4244847cc0e8/mesonbuild/backend/ninjabackend.py#L625
