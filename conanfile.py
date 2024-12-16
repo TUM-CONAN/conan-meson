@@ -1,4 +1,5 @@
 import os
+import sys
 import textwrap
 
 from conan import ConanFile, conan_version
@@ -10,9 +11,6 @@ required_conan_version = ">=1.52.0"
 
 
 class MesonConan(ConanFile):
-    python_requires = "camp_common/[>=0.1]@camposs/stable"
-    python_requires_extend = "camp_common.CampPythonBase"
-
     name = "meson"
     version = "1.6.0"
     description = "a project to create the best possible next-generation build system"
@@ -27,8 +25,6 @@ class MesonConan(ConanFile):
         basic_layout(self, src_folder="src")
 
     def requirements(self):
-        if self._use_custom_python:
-            self.requires("cpython/[~{}]@camposs/stable".format(self._python_version))
         if self.conf.get("tools.meson.mesontoolchain:backend", default="ninja", check_type=str) == "ninja":
             # Meson requires >=1.8.2 as of 1.5
             # https://github.com/mesonbuild/meson/blob/b6b634ad33e5ca9ad4a9d6139dba4244847cc0e8/mesonbuild/backend/ninjabackend.py#L625
@@ -62,11 +58,19 @@ class MesonConan(ConanFile):
         copy(self, "*", src=self.immutable_package_folder, dst=self.package_folder)
         replace_in_file(self, os.path.join(self.package_folder, "bin", "meson.cmd"),
                         "set PYTHONDONTWRITEBYTECODE=1",
-                        "")
+                        '')
 
         replace_in_file(self, os.path.join(self.package_folder, "bin", "meson"),
                         "export PYTHONDONTWRITEBYTECODE=1",
-                        "")
+                        '')
+        replace_in_file(self, os.path.join(self.package_folder, "bin", "meson.cmd"),
+                        "CALL python %~dp0/meson.py %*",
+                        f'CALL {sys.executable} %~dp0/meson.py %*')
+
+        replace_in_file(self, os.path.join(self.package_folder, "bin", "meson"),
+                        'exec "$meson_dir/meson.py" "$@"',
+                        f'exec "{sys.executable}" "$meson_dir/meson.py" "$@"')
+
 
     @staticmethod
     def _chmod_plus_x(filename):
