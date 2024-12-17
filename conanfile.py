@@ -25,6 +25,8 @@ class MesonConan(ConanFile):
         basic_layout(self, src_folder="src")
 
     def requirements(self):
+        if self.conf.get("user.camp.common:use_custom_python", default=False, check_type=str):
+            self.requires("cpython/[~{}]@camposs/stable".format(self.conf.get("user.camp.common:use_custom_python", check_type=str)))
         if self.conf.get("tools.meson.mesontoolchain:backend", default="ninja", check_type=str) == "ninja":
             # Meson requires >=1.8.2 as of 1.5
             # https://github.com/mesonbuild/meson/blob/b6b634ad33e5ca9ad4a9d6139dba4244847cc0e8/mesonbuild/backend/ninjabackend.py#L625
@@ -63,13 +65,29 @@ class MesonConan(ConanFile):
         replace_in_file(self, os.path.join(self.package_folder, "bin", "meson"),
                         "export PYTHONDONTWRITEBYTECODE=1",
                         '')
-        replace_in_file(self, os.path.join(self.package_folder, "bin", "meson.cmd"),
-                        "CALL python %~dp0/meson.py %*",
-                        f'CALL {sys.executable} %~dp0/meson.py %*')
+        if self.conf.get("user.camp.common:use_custom_python", default=False, check_type=str):
+            cpy_dep = self.dependencies["cpython"]
+            py_exe_win = os.path.join(cpy_dep.package_folder, "bin", "python.exe")
+            py_exe = os.path.join(cpy_dep.package_folder, "bin", "python3")
+            bin_path = os.path.join(cpy_dep.package_folder, "bin")
+            lib_path = os.path.join(cpy_dep.package_folder, "lib")
+            replace_in_file(self, os.path.join(self.package_folder, "bin", "meson.cmd"),
+                            "CALL python %~dp0/meson.py %*",
+                            textwrap.dedent(f'''\
+                                set PYTHONHOME="{cpy_dep.package_folder}"
+                                set PATH="{bin_path}";%PATH%
+                                set PYTHONPATH="{lib_path}"
+                                CALL {py_exe_win} %~dp0/meson.py %*
+                                '''))
 
-        replace_in_file(self, os.path.join(self.package_folder, "bin", "meson"),
-                        'exec "$meson_dir/meson.py" "$@"',
-                        f'exec "{sys.executable}" "$meson_dir/meson.py" "$@"')
+            replace_in_file(self, os.path.join(self.package_folder, "bin", "meson"),
+                            'exec "$meson_dir/meson.py" "$@"',
+                            textwrap.dedent(f'''\
+                                export PYTHONHOME="{cpy_dep.package_folder}"
+                                export PATH="{bin_path}":$PATH
+                                export PYTHONPATH="{lib_path}"
+                                exec "{py_exe}" "$meson_dir/meson.py" "$@"
+                                '''))
 
 
     @staticmethod
